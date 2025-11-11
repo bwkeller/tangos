@@ -1,6 +1,6 @@
 install_requires = [
     'setuptools',
-    'numpy >= 1.10.0',
+    'numpy >= 2.0',
     'sqlalchemy >= 2.0',
     'pyparsing >= 2.1.0',
     'WebOb >= 1.7.0rc2', # Response.has_body
