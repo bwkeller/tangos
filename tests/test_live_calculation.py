@@ -135,6 +135,11 @@ def test_nested_abs_at_function():
     # n.b. for J_dm_enc
     assert np.allclose(halo.calculate("abs(at(3.0,dummy_property_2))"), 15.0*np.sqrt(3))
 
+def test_unary_minus_function():
+    halo = tangos.get_halo("sim/ts1/1")
+    assert np.allclose(halo.calculate("-dummy_property_3"), 2.5)
+    assert np.allclose(halo.calculate("--dummy_property_3"), -2.5)
+
 def test_abcissa_passing_function():
     """In this example, the x-coordinates need to be successfully passed "through" the abs function for the
     at function to return the correct result."""
