@@ -148,6 +148,16 @@ def test_json_gather_bool():
     assert result['is_boolean'] is True
     assert result['is_array'] is False
 
+def test_json_gather_bool_comparison():
+    response = app.get("/sim/ts1/gather/halo/test_value>0.5.json")
+    assert response.content_type == 'application/json'
+    assert response.status_int == 200
+    result = json.loads(response.body.decode('utf-8'))
+    assert result['timestep'] == 'ts1'
+    assert result['data_formatted'] == ["True", "True", "True", "True"]
+    assert result['is_number'] is False
+    assert result['is_boolean'] is True
+    assert result['is_array'] is False
 
 def test_simulation_with_slash():
     response = app.get("/")

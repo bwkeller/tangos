@@ -1,6 +1,6 @@
 install_requires = [
     'setuptools',
-    'numpy >= 1.10.0',
+    'numpy >= 2.0',
     'sqlalchemy >= 2.0',
     'pyparsing >= 2.1.0',
     'WebOb >= 1.7.0rc2', # Response.has_body
@@ -97,7 +97,7 @@ setup(name='tangos',
       },
       include_package_data=True,
       zip_safe=False,
-      python_requires='>=3.8',
+      python_requires='>=3.11',
       install_requires=install_requires,
       tests_require=tests_require,
       test_suite="tests",
