@@ -39,8 +39,11 @@ def test_handler_properties():
     npt.assert_allclose(prop['approx_resolution_Msol'], 144411.17640)
 
 def test_handler_properties_quicker_flag():
-    output_manager.quicker = True
-    prop = output_manager.get_properties()
+    try:
+        output_manager.quicker = True
+        prop = output_manager.get_properties()
+    finally:
+        output_manager.quicker = False
     npt.assert_allclose(prop['approx_resolution_kpc'], 33.590757, rtol=1e-5)
     npt.assert_allclose(prop['approx_resolution_Msol'], 2.412033e+10, rtol=1e-4)
 
