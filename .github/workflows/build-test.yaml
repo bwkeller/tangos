@@ -76,4 +76,4 @@ jobs:
         sudo /etc/init.d/mysql start
     - name: Run all tests
       working-directory: tests
-      run: python -m pytest -v --random-order-seed=11
+      run: python -m pytest -v 
