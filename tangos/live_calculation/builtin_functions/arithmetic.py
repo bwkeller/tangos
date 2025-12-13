@@ -73,6 +73,10 @@ def logical_not(halos, vals):
     return arithmetic_unary_op(vals, np.logical_not)
 
 @BuiltinFunction.register
+def negate(halos, vals):
+    return arithmetic_unary_op(vals, np.negative)
+
+@BuiltinFunction.register
 def power(halos, vals1, vals2):
     return arithmetic_binary_op(vals1, vals2, np.power)
 

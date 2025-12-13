@@ -3,10 +3,11 @@ import numpy as np
 import tangos
 from tangos.util import consistent_collection
 
-from ... import core
+from ... import core, temporary_halolist
 from ...core import extraction_patterns
 from .. import (
     BuiltinFunction,
+    Calculation,
     FixedInput,
     FixedNumericInput,
     LiveProperty,
@@ -28,6 +29,62 @@ def match(source_halos, target):
     assert len(results) == len(source_halos)
     return np.array(results, dtype=object)
 match.set_input_options(0, provide_proxy=True, assert_class = FixedInput)
+
+
+@BuiltinFunction.register
+def match_reduce(source_halos: list[core.halo.Halo],
+                 target_name: str,
+                 calculation: LiveProperty,
+                 reduction: str):
+    """Get the reduction (sum, mean, min, max) of the specified calculation over all objects linked in the
+    specified target timestep or simulation"""
+    if len(source_halos) == 0:
+        return []
+
+    calculation = calculation.name
+
+    if not isinstance(calculation, Calculation):
+        calculation = tangos.live_calculation.parser.parse_property_name(calculation)
+
+    reduction_map = {'sum': np.sum,
+                     'mean': np.mean,
+                     'min': lambda input: np.min(input) if len(input)>0 else None,
+                     'max': lambda input: np.max(input) if len(input)>0 else None}
+    if reduction not in reduction_map.keys():
+        raise ValueError(f"Unsupported reduction '{reduction}' in match_reduce. Supported reductions are sum, mean, min, max.")
+
+    from ... import relation_finding
+
+    target = tangos.get_item(target_name, core.Session.object_session(source_halos[0]))
+    strategy = relation_finding.MultiSourceMultiHopStrategy(source_halos, target, one_match_per_input=False)
+
+    # using strategy.temp_table doesn't seem to offer access to the sources of the halos, so we
+    # take a pass through python. This also offers the opportunity to use a throw-away session
+    # for the onwards calculation. There may be more efficient ways to do all this.
+
+    all_halos = strategy.all()
+    all_sources = strategy.sources()
+
+    with core.Session() as session:
+        with temporary_halolist.temporary_halolist_table(session, [h.id for h in all_halos]) as tt:
+            target_halos_supplemented = calculation.supplement_halo_query(
+                temporary_halolist.halo_query(tt)
+            )
+            values,  = calculation.values(target_halos_supplemented.all())
+
+    values_per_halo = [[] for _ in source_halos]
+    for source, value in zip(all_sources, values):
+        values_per_halo[source].append(value)
+
+    reduction_func = reduction_map[reduction]
+    return [reduction_func(vals) for vals in values_per_halo]
+
+
+
+match_reduce.set_input_options(2, assert_class=FixedInput, provide_proxy=True)
+match_reduce.set_input_options(0, assert_class=FixedInput, provide_proxy=True)
+match_reduce.set_input_options(1, assert_class=Calculation, provide_proxy=True)
+
 
 @BuiltinFunction.register
 def later(source_halos, num_steps):

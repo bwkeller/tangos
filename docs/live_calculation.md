@@ -178,6 +178,13 @@ Note that _string_ inputs must have quotes when used, but property names and _ex
     - *property_criterion* (string): either `'max'` or `'min'` to pick out either the progenitor with
       the maximum or minimum value of the target property
 
+* `match_reduce(s, calculation, reduction)`: finds all linked objects in a given target simulation 
+  or timestep, performs a calculation on each of them, then reduces the result in a specified way.
+  Inputs:
+   - *s* (string): the name of the simulation or timestep to link to
+   - *calculation* (expression): the calculation to perform on each matching object
+   - *reduction* (string): either `'min'`, `'max'`, `'mean'` or `'sum'`. Specifies how to
+     reduce multiple results to a single per input object.
 * Redirection operator `.`: finds a property in the linked object, e.g. `find_progenitor(SFR, 'max').mass` gets `mass`
   at the time of maximum `SFR`.
 

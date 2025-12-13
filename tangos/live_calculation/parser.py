@@ -38,7 +38,8 @@ IN_OPS = [("**", "power"),
           (">=", "greater_equal"),
           ("<=", "less_equal")]
 
-UNARY_OPS = [("!", "logical_not")]
+UNARY_OPS = [("!", "logical_not"),
+             ("-", "negate")]
 
 IN_OPS_PYPARSING = []
 UNARY_OPS_PYPARSING = []
@@ -69,7 +70,6 @@ string_value = dbl_quotes.suppress() + pp.SkipTo(dbl_quotes).setParseAction(pack
                sng_quotes.suppress() + pp.SkipTo(sng_quotes).setParseAction(pack_args(FixedInput)) + sng_quotes.suppress()
 
 redirection = pp.Forward().setParseAction(pack_args(Link))
-
 
 element_identifier = pp.Literal("[").suppress()+numerical_value+pp.Literal("]").suppress();
 
