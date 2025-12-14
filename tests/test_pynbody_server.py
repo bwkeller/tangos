@@ -23,6 +23,8 @@ class _TestHandler(tangos.input_handlers.pynbody.ChangaInputHandler):
         else:
             return super().load_object(ts_extension, finder_id, finder_offset, object_typetag, mode)
 
+    enable_autoselect=False
+
 def setup_module():
     global handler
     pt.use("multiprocessing")
