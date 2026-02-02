@@ -98,6 +98,7 @@ class PynbodyInputHandler(finding.PatternBasedFileDiscovery, HandlerBase):
             raise NotImplementedError("Load mode %r is not implemented"%mode)
 
     def _build_kdtree(self, timestep, mode):
+        timestep.wrap() # Because we have converted pos to kpc, FP roundoff may place particles at the boundaries outside the period of the box.
         timestep.build_tree()
 
     def load_region(self, ts_extension, region_specification, mode=None, expected_number_of_queries=None) -> pynbody.snapshot.simsnap.SimSnap:
