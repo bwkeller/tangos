@@ -276,14 +276,22 @@ def metals(sim):
 def test_mixed_derived_loaded_arrays(mode):
     """Sometimes an array is present on disk for some families but is derived for others. A notable real-world example
     is the mass array for gas in ramses snapshots. Previously accessing this array in a remotesnap could cause errors,
-    specifically a "derived array is not writable" error on the server. This test ensures that the correct behaviour"""
+    specifically a "derived array is not writable" error on the server. This test ensures that the correct behaviour,
+    by having a derived metals array for the dm particles"""
 
     f_remote = handler.load_object('tiny.000640', 0, 0, mode=mode)
     f_local = handler.load_object('tiny.000640', 0, 0, mode=None)
     assert (f_remote.dm['metals'] == f_local.dm['metals']).all()
     assert (f_remote.st['metals'] == f_local.st['metals']).all()
+    assert (f_remote.gas['metals'] == f_local.gas['metals']).all()
 
+@pytest.mark.parametrize('mode', ['server', 'server-shared-mem'])
+@using_parallel_tasks
+def test_loadable_keys(mode):
+    f_remote = handler.load_object('tiny.000640', 0, 0, mode=mode)
 
+    assert 'pos' in f_remote.loadable_keys()
+    assert 'metals' in f_remote.gas.loadable_keys()
 
 @pytest.mark.parametrize('load_sphere', [True, False])
 @using_parallel_tasks(3)
