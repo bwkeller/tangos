@@ -3,7 +3,7 @@ install_requires = [
     # see https://github.com/Pylons/pyramid/issues/3731
     'numpy >= 2.0',
     'sqlalchemy >= 2.0',
-    'pyparsing >= 2.1.0',
+    'pyparsing >= 3.0.0', # PEP8 names
     'WebOb >= 1.7.0rc2', # Response.has_body
     'repoze.lru >= 0.4', # py3 compat
     'zope.interface >= 3.8.0',  # has zope.interface.registry
