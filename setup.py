@@ -1,5 +1,6 @@
 install_requires = [
-    'setuptools',
+    'setuptools<82', # this is for pyramid, which seems to require pkg_resources
+    # see https://github.com/Pylons/pyramid/issues/3731
     'numpy >= 2.0',
     'sqlalchemy >= 2.0',
     'pyparsing >= 2.1.0',
