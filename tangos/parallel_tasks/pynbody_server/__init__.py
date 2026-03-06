@@ -286,8 +286,11 @@ class RemoteSnap(pynbody.snapshot.copy_on_access.UnderlyingClassMixin, pynbody.s
 
         self._unavailable_arrays = []
 
-
-
+    def loadable_keys(self, fam=None) -> list[str]:
+        if fam is None:
+            return self._loadable_keys
+        else:
+            return self._fam_loadable_keys.get(fam, [])
 
     def _load_array(self, array_name, fam=None):
         if (array_name, fam) in self._unavailable_arrays:
