@@ -293,6 +293,16 @@ def test_loadable_keys(mode):
     assert 'pos' in f_remote.loadable_keys()
     assert 'metals' in f_remote.gas.loadable_keys()
 
+@pytest.mark.parametrize('mode', ['server', 'server-shared-mem'])
+@using_parallel_tasks
+def test_profile(mode):
+    """Direct test for issue #269 (underlying issue is tested above in test_loadable_keys)"""
+    f_remote = handler.load_object('tiny.000640', 0, 0, mode=mode)
+
+    pro = pynbody.analysis.profile.Profile(f_remote.gas)
+
+    _ = pro['metals'] # just checking there is no KeyError raised here
+
 @pytest.mark.parametrize('load_sphere', [True, False])
 @using_parallel_tasks(3)
 def test_shmem_simulation(load_sphere):
