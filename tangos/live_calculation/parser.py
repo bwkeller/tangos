@@ -21,9 +21,9 @@ def pack_args(for_function):
     return lambda t: for_function(*t)
 
 
-pp.ParserElement.enablePackrat()
+pp.ParserElement.enable_packrat()
 
-numerical_value = pp.Regex(r'-?\d+(\.\d*)?([eE]-?\d+)?').setParseAction(pack_args(FixedNumericInput))
+numerical_value = pp.Regex(r'-?\d+(\.\d*)?([eE]-?\d+)?').set_parse_action(pack_args(FixedNumericInput))
 
 IN_OPS = [("**", "power"),
           ("*", "multiply"),
@@ -93,12 +93,12 @@ live_calculation_property << property_name+parameters
 
 array_element << ((live_calculation_property | stored_property) + element_identifier)
 
-property_complete = pp.stringStart()+value_or_property_name+pp.stringEnd()
+property_complete = pp.string_start()+value_or_property_name+pp.string_end()
 
 
 def parse_property_name( name):
     with _parsing_lock:
-        return property_complete.parseString(name)[0]
+        return property_complete.parse_string(name)[0]
 
 def parse_property_name_if_required(name):
     if isinstance(name, Calculation):
