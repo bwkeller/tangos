@@ -25,6 +25,10 @@ class IterationState:
         self._jobs_complete = jobs_complete
         self._store_resume_state = store_resume_state
         self._rank_running_job = {i: None for i in range(1,backend_size or backend.size())}
+        self._num_complete = sum(jobs_complete)
+        # jobs before this index are either complete or already assigned to a rank, so the
+        # search for the next job to hand out never needs to look at them again
+        self._next_job_candidate = 0
 
     def __len__(self):
         return len(self._jobs_complete)
@@ -118,9 +122,10 @@ class IterationState:
             pickle.dump(self._this_run_iteration_states, f)
 
     def mark_complete(self, job):
-        if job is None:
+        if job is None or self._jobs_complete[job]:
             return
         self._jobs_complete[job] = True
+        self._num_complete += 1
         self._store_completion_map()
 
     def next_job(self, for_rank):
@@ -128,19 +133,24 @@ class IterationState:
             self.mark_complete(self._rank_running_job[for_rank])
             del self._rank_running_job[for_rank]
 
-        for i in range(len(self._jobs_complete)):
-            if not self._jobs_complete[i] and i not in self._rank_running_job.values():
-                self._rank_running_job[for_rank] = i
-                return i
+        while self._next_job_candidate < len(self._jobs_complete) \
+                and self._jobs_complete[self._next_job_candidate]:
+            self._next_job_candidate += 1
+
+        if self._next_job_candidate < len(self._jobs_complete):
+            job = self._next_job_candidate
+            self._next_job_candidate += 1
+            self._rank_running_job[for_rank] = job
+            return job
         return None
 
     def finished(self):
         # not enough for all jobs to be complete, must also have notified all ranks (this matters
         # if some ranks never did any work at all)
-        return all(self._jobs_complete) and len(self._rank_running_job)==0
+        return self._num_complete == len(self._jobs_complete) and len(self._rank_running_job)==0
 
     def count_complete(self):
-        return sum(self._jobs_complete)
+        return self._num_complete
 
     def __eq__(self, other):
         return self._jobs_complete == other._jobs_complete
