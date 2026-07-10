@@ -180,7 +180,10 @@ class PropertyWriter(GenericTangosTool):
             # before all nodes have generated their local work lists
             parallel_tasks.barrier()
 
-            return parallel_tasks.distributed(items, allow_resume=False)
+            # store_resume_state=False: this loop typically has one job per object, so recording
+            # the completion state on every job would be costly; it could never be resumed anyway
+            # since allow_resume is False
+            return parallel_tasks.distributed(items, allow_resume=False, store_resume_state=False)
         else:
             return items
 

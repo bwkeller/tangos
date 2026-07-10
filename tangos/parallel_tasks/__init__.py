@@ -84,13 +84,17 @@ def launch(function, args=None, backend_kwargs=None):
 
     return result
 
-def distributed(items, allow_resume=False, resumption_id=None):
+def distributed(items, allow_resume=False, resumption_id=None, store_resume_state=True):
     """Return an iterator that consumes the items, distributed across all processors
     (i.e. each item is consumed by only one processor, in a dynamic way).
 
     Optionally, if allow_resume is True, then the iterator will resume from the last point it reached
     provided argv and the stack trace are unchanged. If resumption_id is not None, then
-    the stack trace is ignored and only resumption_id needs to match."""
+    the stack trace is ignored and only resumption_id needs to match.
+
+    If store_resume_state is False, no resume state is recorded as the iteration proceeds. This
+    is useful for loops with very many jobs, where recording the state each time a job completes
+    carries a significant cost."""
 
     if type(items) == set:
         items = list(items)
@@ -99,7 +103,7 @@ def distributed(items, allow_resume=False, resumption_id=None):
         return items
     else:
         from . import jobs
-        return jobs.distributed_iterate(items, allow_resume, resumption_id)
+        return jobs.distributed_iterate(items, allow_resume, resumption_id, store_resume_state)
 
 def synchronized(items, allow_resume=False, resumption_id=None):
     """Return an iterator that consumes all items on all processors.

@@ -19,10 +19,11 @@ class InconsistentContext(RuntimeError):
 
 class IterationState:
     _this_run_iteration_states = {}
-    def __init__(self, context, jobs_complete, /, backend_size=None):
+    def __init__(self, context, jobs_complete, /, backend_size=None, store_resume_state=True):
         from . import backend
         self._context = context
         self._jobs_complete = jobs_complete
+        self._store_resume_state = store_resume_state
         self._rank_running_job = {i: None for i in range(1,backend_size or backend.size())}
 
     def __len__(self):
@@ -36,28 +37,30 @@ class IterationState:
         ).decode('ascii')
 
     @classmethod
-    def from_string(cls, string, context=None, backend_size=None):
+    def from_string(cls, string, context=None, backend_size=None, store_resume_state=True):
         jobs_complete = pickle.loads(
             zlib.decompress(
                 base64.a85decode(string.encode('ascii'))
             )
         )
-        return cls(context, jobs_complete, backend_size=backend_size)
+        return cls(context, jobs_complete, backend_size=backend_size, store_resume_state=store_resume_state)
 
     @classmethod
-    def from_context(cls, num_jobs, argv=None, stack_hash=None, allow_resume=None, backend_size=None):
+    def from_context(cls, num_jobs, argv=None, stack_hash=None, allow_resume=None, backend_size=None,
+                     store_resume_state=True):
         context = (argv, stack_hash, num_jobs)
         if allow_resume:
             cmap = cls._get_stored_completion_map_from_context(context)
             if cmap is not None:
-                r = cls.from_string(cmap, context)
+                r = cls.from_string(cmap, context, backend_size=backend_size,
+                                    store_resume_state=store_resume_state)
                 log.logger.info(
                     f"Resuming from previous run. {r.count_complete()} of {len(r)} jobs are already complete.")
                 log.logger.info(
                     f"To prevent tangos from doing this, you can delete the folder {str(cls._resume_state_folder_path()):s}")
                 return r
 
-        return cls(context, [False]*num_jobs, backend_size=backend_size)
+        return cls(context, [False]*num_jobs, backend_size=backend_size, store_resume_state=store_resume_state)
 
     @classmethod
     def _resume_state_folder_path(cls):
@@ -106,6 +109,10 @@ class IterationState:
             f.unlink()
 
     def _store_completion_map(self):
+        if not self._store_resume_state:
+            # loops opting out of resume-state storage (e.g. per-object loops with very many jobs)
+            # avoid re-encoding and rewriting the completion map for every job that completes
+            return
         self._this_run_iteration_states[self._context] = self.to_string()
         with open(self._resume_state_path(), "wb") as f:
             pickle.dump(self._this_run_iteration_states, f)
@@ -177,7 +184,7 @@ _iteration_states = {}
 class MessageStartIteration(message.BarrierMessageWithResponse):
     def process_global(self):
         global _next_iteration_state_id, _iteration_states
-        req_jobs, req_hash, allow_resume, synchronized = self.contents
+        req_jobs, req_hash, allow_resume, synchronized, store_resume_state = self.contents
 
         argv_string = shlex.join(sys.argv)
 
@@ -186,7 +193,8 @@ class MessageStartIteration(message.BarrierMessageWithResponse):
         my_id = _next_iteration_state_id
         _iteration_states[my_id] = IteratorClass.from_context(req_jobs, argv=argv_string,
                                                               stack_hash=req_hash,
-                                                              allow_resume=allow_resume)
+                                                              allow_resume=allow_resume,
+                                                              store_resume_state=store_resume_state)
         _next_iteration_state_id += 1
 
         self.respond(my_id)
@@ -230,19 +238,24 @@ class MessageRequestJob(message.MessageWithResponse):
 
         self.respond(job)
 
-def distributed_iterate(task_list, allow_resume=False, resumption_id=None):
+def distributed_iterate(task_list, allow_resume=False, resumption_id=None, store_resume_state=True):
     """Sets up an iterator returning items of task_list.
 
     If allow_resume is True, then the iterator will resume from the last point it reached
     provided argv and the stack trace are unchanged. If resumption_id is not None, then
     the stack trace is ignored and only resumption_id needs to match.
+
+    If store_resume_state is False, no resume state is recorded as the iteration proceeds. This
+    is useful for loops with very many jobs, where re-encoding and rewriting the completion map
+    every time a job completes carries a significant cost.
     """
     from . import backend, barrier
 
     resumption_id = resumption_id or _autogenerate_resume_id()
 
     assert backend is not None, "Parallelism is not initialised"
-    iteration_id = MessageStartIteration((len(task_list), resumption_id, allow_resume, False)).send_and_get_response(0)
+    iteration_id = MessageStartIteration((len(task_list), resumption_id, allow_resume, False,
+                                          store_resume_state)).send_and_get_response(0)
     barrier()
 
     while True:
@@ -271,7 +284,8 @@ def synchronized_iterate(task_list, allow_resume=False, resumption_id=None):
 
     assert backend is not None, "Parallelism is not initialised"
 
-    iteration_id = MessageStartIteration((len(task_list), resumption_id, allow_resume, True)).send_and_get_response(0)
+    iteration_id = MessageStartIteration((len(task_list), resumption_id, allow_resume, True,
+                                          True)).send_and_get_response(0)
     barrier()
 
     while True:
