@@ -42,6 +42,10 @@ class CentreAndRadius(PynbodyPropertyCalculation):
 
             center += temporary_centre  # centre should be relative to original snapshot!
 
+            # wrap the centre back into the box; otherwise a halo straddling the periodic boundary
+            # yields a shrink_center just outside the fundamental domain (see _wrap_to_box):
+            center = _wrap_to_box(center, particle_data)
+
             rmax = pynbody.derived.r(particle_data).max()
             # N.B. not using halo['r'] which could end up calculating r across entire simulation, needlessly
 
@@ -76,6 +80,29 @@ class CentreAndRadiusComoving(LivePropertyCalculation):
     def calculate(self, _, halo):
         scalefactor = 1./(1.+halo.timestep.redshift)
         return halo['shrink_center']/scalefactor, halo['max_radius']/scalefactor
+
+
+def _wrap_to_box(center, particle_data):
+    """Wrap a position back into pynbody's fundamental domain [-L/2, L/2), matching SimSnap.wrap.
+
+    Without this, the shrink_center reported for a halo straddling the periodic boundary can land
+    just outside the box. Snapshots without a boxsize (non-periodic) are left untouched."""
+    import pynbody
+
+    boxsize = particle_data.properties.get('boxsize', None)
+    if boxsize is None:
+        return center
+
+    # mirror the boxsize handling in pynbody's SimSnap.wrap so we stay consistent with the earlier
+    # halo.wrap() call in _recenter:
+    if isinstance(boxsize, pynbody.units.UnitBase):
+        boxsize = float(boxsize.ratio(particle_data['pos'].units, **particle_data.conversion_context()))
+    else:
+        boxsize = float(boxsize)
+
+    center[center <= -boxsize / 2] += boxsize
+    center[center > boxsize / 2] -= boxsize
+    return center
 
 
 @contextlib.contextmanager
